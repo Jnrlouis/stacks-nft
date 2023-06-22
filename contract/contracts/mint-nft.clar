@@ -19,6 +19,9 @@
 
 (define-data-var last-token-id uint u0)
 
+;; (define-data-var retrievedPrincipal principal tx-sender)
+;; (define-data-var retBuff (buff 256) 0xb5463A49BCe74778db3f498900BEba299f5beEa8)
+
 
 (define-read-only (get-last-token-id)
     (ok (var-get last-token-id))
@@ -32,17 +35,23 @@
     (ok (nft-get-owner? fren token-id))
 )
 
+;; (define-read-only (get-retrieved-principal)
+;;     (ok (var-get retrievedPrincipal))
+;; )
+
+;; for compressed public keys
+(define-read-only (p2pkh-to-principal (scriptSig (buff 256)))
+  (let ((pk (unwrap! (as-max-len? (unwrap! (slice? scriptSig (- (len scriptSig) u33) (len scriptSig)) none) u33) none)))
+    (some (unwrap! (principal-of? pk) none)))
+)
+
+
 (define-public (transfer (token-id uint) (sender principal) (recipient principal))
     (begin
         (asserts! (is-eq tx-sender sender) err-not-token-owner)
         (nft-transfer? fren token-id sender recipient)
     )
 )
-
-;; for compressed public keys
-(define-read-only (p2pkh-to-principal (scriptSig (buff 256)))
-  (let ((pk (unwrap! (as-max-len? (unwrap! (slice? scriptSig (- (len scriptSig) u33) (len scriptSig)) none) u33) none)))
-    (some (unwrap! (principal-of? pk) none))))
 
 (define-public (mint (recipient principal) (height uint) (tx (buff 1024)) (header (buff 80)) (proof { tx-index: uint, hashes: (list 14 (buff 32)), tree-depth: uint}))
     (let
@@ -54,40 +63,14 @@
             ;; (tx-was-mined (try! (contract-call? 'ST3QFME3CANQFQNR86TYVKQYCFT7QX4PRXM1V9W6H.clarity-bitcoin-bitbadge-v3 was-tx-mined-compact height tx header proof)))
             (first-output (unwrap! (element-at (get outs tx-obj) u0) err-out-not-found))
             (first-input (unwrap! (element-at (get ins tx-obj) u0) err-in-not-found))
-            
+            ;; (retrieved-address (unwrap! (p2pkh-to-principal (get scriptSig first-input)) err-unsupported-tx))
         )
         (asserts! (is-eq tx-was-mined true) err-tx-not-mined)
         (asserts! (is-eq u100 (get value first-output)) err-amount-mismatch)
-        (asserts! (is-eq recipient (unwrap! (p2pkh-to-principal (get scriptSig first-input)) err-unsupported-tx)) err-address-mismatch)
+        ;; (asserts! (is-eq recipient retrieved-address) err-address-mismatch)
         (try! (nft-mint? fren token-id recipient))
         (var-set last-token-id token-id)
+        ;; (var-set retrievedPrincipal retrieved-address)
         (ok token-id)
     )
 )
-
-;; (define-public (mint (recipient principal) (height uint) (tx (buff 1024)) (header (buff 80)) (proof { tx-index: uint, hashes: (list 14 (buff 32)), tree-depth: uint}))
-;;     (let
-;;         (
-;;             (token-id (+ (var-get last-token-id) u1))
-;;             (tx-was-mined (try! (contract-call? 'ST3QFME3CANQFQNR86TYVKQYCFT7QX4PRXM1V9W6H.clarity-bitcoin-bitbadge-v3 was-tx-mined-compact height tx header proof)))
-;;         )
-;;         (asserts! (is-eq tx-was-mined true) err-tx-not-mined)
-;;         (try! (nft-mint? bitbadge token-id recipient))
-;;         (var-set last-token-id token-id)
-;;         (ok token-id)
-;;     )
-;; )
-
-;; (define-public (send-to-first-input (height uint) (tx (buff 1024)) (header (buff 80)) (proof { tx-index: uint, hashes: (list 14 (buff 32)), tree-depth: uint}))
-;;     (let (
-;;         ;; extract parts of Bitcoin transaction
-;;           (tx-obj (try! (contract-call? .clarity-bitcoin parse-tx tx)))
-;;           (was-mined (try! (contract-call? .clarity-bitcoin was-tx-mined-compact height tx header proof)))
-;;           (first-output (unwrap! (element-at (get outs tx-obj) u0) err-out-not-found))
-;;           (first-input (unwrap! (element-at (get ins tx-obj) u0) err-in-not-found)))
-;;         ;; TODO check whether the tx-sender is the same as the first output
-
-;;         ;; transfer stx to first-input
-;;         (if was-mined
-;;             (stx-transfer? (sats-to-stx (get value first-output)) tx-sender (unwrap! (p2pkh-to-principal (get scriptSig first-input)) err-unsupported-tx))
-;;             err-not-found)))

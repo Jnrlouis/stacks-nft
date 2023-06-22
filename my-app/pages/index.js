@@ -29,6 +29,7 @@ export default function Home() {
   useEffect(() => {
     const intervalId = setInterval(() => {
       const txid = JSON.parse(localStorage.getItem("txid"));
+      console.log("txid: ", txid);
       if (txid) {
         fetch(`https://blockstream.info/testnet/api/tx/${txid}/status`)
           .then((response) => response.json())
@@ -51,6 +52,7 @@ export default function Home() {
                 `https://blockstream.info/testnet/api/tx/${txid}/hex`
               );
               const txRaw = await rawResponse.text();
+              console.log("Raw TX: ", txRaw);
               localStorage.setItem("txRaw", txRaw);
               // fetch and set the merkle proof
               const proofResponse = await fetch(
@@ -85,7 +87,7 @@ export default function Home() {
       userSession,
       network: StacksTestnet,
       appDetails: {
-        name: "Legends",
+        name: "Frens",
         icon: "https://freesvg.org/img/bitcoin.png",
       },
       onFinish: () => {
@@ -106,7 +108,7 @@ export default function Home() {
   };
 
   // This function sends a Bitcoin transaction and stores the raw transaction and merkle proof in localStorage
-  const reserveLegend = async () => {
+  const reserveFren = async () => {
     const resp = await window.btc?.request("sendTransfer", {
       address: "tb1qeeha0809zr9andxruvgg6fy9glt70qqeysrk8h",
       amount: "100",
@@ -115,12 +117,14 @@ export default function Home() {
     // Storing txid in local storage
     if (typeof window !== "undefined") {
       localStorage.setItem("txid", JSON.stringify(resp.result.txid));
+      console.log("txid: ", JSON.stringify(resp.result.txid));
     }
 
     localStorage.setItem("txStatus", "pending");
   };
 
   const removeWitnessData = (txHex) => {
+
     const tx = Transaction.fromHex(txHex);
 
     // Create a new empty transaction
@@ -141,12 +145,12 @@ export default function Home() {
 
     // Copy locktime from original transaction
     newTx.locktime = tx.locktime;
-
+    
     return newTx.toHex();
   };
 
   // This function retrieves raw transaction and merkle proof from localStorage and calls the mint Clarity function
-  const mintLegends = async () => {
+  const mintFrens = async () => {
     // Retrieving rawTx and merkleProof from local storage
     let txRaw = "";
     let txMerkleProof = "";
@@ -187,19 +191,10 @@ export default function Home() {
       }),
     ];
 
-    console.log("Address: ", principalCV(userData.profile.stxAddress.testnet));
-    console.log("Height: ", uintCV(blockHeight));
-    console.log("TX: ", bufferCV(Buffer.from(txRaw, "hex")));
-    console.log("Header: ", bufferCV(Buffer.from(blockHeaderHex, "hex")));
-    console.log("Proof: ", tupleCV({
-      "tx-index": uintCV(txIndex),
-      hashes: listCV(hashes),
-      "tree-depth": uintCV(txMerkleProof.merkle.length),
-    }));
-    console.log("Function Args: ", functionArgs);
-
     const contractAddress = "STH0Q890NVFSW78EY65VP69SXJRZFWY3F218HXJ4"; 
-    const contractName = "frens-mint";
+ 
+    const contractName = "frens-mint-v8";
+
     const functionName = "mint";
 
     const options = {
@@ -208,7 +203,7 @@ export default function Home() {
       functionName,
       functionArgs,
       appDetails: {
-        name: "Legends",
+        name: "Frens",
         icon: "https://freesvg.org/img/bitcoin.png",
       },
       onFinish: (data) => {
@@ -230,24 +225,25 @@ export default function Home() {
         };
       } else if (localStorage.getItem("txStatus") == "confirmed") {
         return {
-          text: "Mint Your Legend",
-          onClick: mintLegends,
+          text: "Mint Your Fren",
+          onClick: mintFrens,
           disabled: false,
-          instructions: "Step 3: Mint your Legend",
+          instructions: "Step 3: Mint your Fren",
         };
       }
     }
     return {
-      text: "Reserve Your Legend",
-      onClick: reserveLegend,
+      text: "Reserve Your Fren",
+      onClick: reserveFren,
       disabled: false,
-      instructions: "Step 1: Reserve your Legend by sending 100 sats",
+      instructions: "Step 1: Reserve your Fren by sending 100 sats",
     };
   };
 
   return (
     <main className="flex flex-col items-center bg-black justify-center min-h-screen p-24">
-      <h1 className="text-6xl font-bold text-center text-white py-10">Legends</h1>
+      <h1 className="text-6xl font-bold text-center text-white py-10">Frens</h1>
+      <p className="text-3xl antialiased italic font-light text-center text-red-300 py-10">you can ONLY mint your NFT if you send exactly 100 sats!</p>
       {!userData.profile ? (
         <button
           className="px-4 py-2 mt-4 text-lg font-bold text-white bg-indigo-600 rounded hover:bg-indigo-500"
@@ -261,7 +257,7 @@ export default function Home() {
             const buttonState = getButtonState();
             return (
               <>
-                <p className="text-xl text-white">{buttonState.instructions}</p>
+                <p className="text-xl text-white py-2.5">{buttonState.instructions}</p>
                 <button
                   className="px-4 py-2 mt-4 text-lg font-bold text-white bg-indigo-600 rounded hover:bg-indigo-500"
                   onClick={buttonState.onClick}
