@@ -3,7 +3,7 @@
 
 Send 100 satoshis to reserve and mint your stacks fren!
 
-[frens]()
+[frens](https://stacks-fren.vercel.app/)
 
 ---
 
