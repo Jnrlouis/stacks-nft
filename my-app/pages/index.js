@@ -149,6 +149,28 @@ export default function Home() {
     return newTx.toHex();
   };
 
+  const publicKeyToP2WPKHAddress = (publicKey, network) => {
+    const p2wpkh = payments.p2wpkh({
+      pubkey: publicKey,
+      network: network,
+    });
+
+    return p2wpkh.address;
+  };
+
+  const verifyCorrectSender = () => {
+    const txRaw = localStorage.getItem("txRaw");
+    const tx = Transaction.fromHex(txRaw);
+    const witness = tx.ins[0].witness;
+    const publicKey = witness[witness.length - 1]; // The public key is the last item in the witness stack
+
+    const address = publicKeyToP2WPKHAddress(publicKey, networks.testnet);
+    if (address === userData.profile.btcAddress.p2wpkh.testnet) {
+      return true;
+    }
+    return false;
+  };
+
   // This function retrieves raw transaction and merkle proof from localStorage and calls the mint Clarity function
   const mintFrens = async () => {
     // Retrieving rawTx and merkleProof from local storage
@@ -158,6 +180,15 @@ export default function Home() {
     if (typeof window !== "undefined") {
       txRaw = removeWitnessData(localStorage.getItem("txRaw"));
       txMerkleProof = JSON.parse(localStorage.getItem("txMerkleProof"));
+    }
+
+    // First we need to verify that the sender of this transaction is the same as the user that is signed in.
+    // This is done on the UI and not on the contract level as the current implementation of the bitcoin-clarity
+    // library doesn't support taproot and segwit yet. It is still WIP.
+    // This would be changed after the implementation is complete.
+    if (!verifyCorrectSender()) {
+      console.log("wrong sender");
+      return false;
     }
 
     const blockHeight = blockDetails.block_height;
